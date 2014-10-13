@@ -4,7 +4,6 @@ Sqskiq
 ======
 
 High performance, [Sidekiq](https://github.com/mperham/sidekiq)-like Amazon SQS messages consumer.
-Currently only supports Rails 3.x.
 
 SQS is complete message solution powered by Amazon, including monitoring, alarms, redundancy, etc. 
 Due to its particularities, we decided to build a message consumer from scratch, to better handle costs, latency and others.
@@ -21,9 +20,12 @@ Getting Start
 
 
   ```ruby
-    Sqskiq.configure do |config|
-      config.aws_access_key_id = 'AWS_ACCESS_KEY_ID'
-      config.aws_secret_access_key = 'AWS_SECRET_ACCESS_KEY'
+    Sqskiq.configure do |sqskiq|
+      sqskiq.configuration = {
+        aws_access_key_id: 'AWS_ACCESS_KEY_ID',
+        config.aws_secret_access_key: 'AWS_SECRET_ACCESS_KEY'
+      }
+      #etc...
     end
   ```
 
