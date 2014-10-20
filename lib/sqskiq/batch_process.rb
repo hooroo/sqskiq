@@ -5,9 +5,9 @@ module Sqskiq
     include Celluloid
     include Sqskiq::SignalHandler
 
-    def initialize
-      @manager = Celluloid::Actor[:manager]
-      @processor = Celluloid::Actor[:processor]
+    def initialize(manager:, processor:)
+      @manager = manager
+      @processor = processor
       subscribe_for_shutdown
     end
 
@@ -28,8 +28,8 @@ module Sqskiq
         end
       end
 
-      @manager.async.batch_done(success_messages)
+      @manager.batch_done(success_messages)
     end
   end
-  
+
 end

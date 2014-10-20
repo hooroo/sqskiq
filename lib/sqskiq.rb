@@ -1,6 +1,7 @@
 require 'sqskiq/worker'
 
 module Sqskiq
+
   def self.initialize!
     require 'celluloid'
     require 'celluloid/autostart'
@@ -13,19 +14,16 @@ module Sqskiq
   end
 
   # Configures and starts actor system
-  def self.bootstrap(worker_config, worker_class)
+  def self.bootstrap
     initialize!
 
-    config = valid_config_from(worker_config)
-    credentials = [config[:queue_name], @configuration]
+    managers = []
 
-    Celluloid::Actor[:manager]   = @manager   = Manager.new(config[:empty_queue_throttle])
-    Celluloid::Actor[:fetcher]   = @fetcher   = Fetcher.pool(:size => config[:num_fetchers], :args => credentials)
-    Celluloid::Actor[:deleter]   = @deleter   = Deleter.pool(:size => config[:num_deleters], :args => credentials)
-    Celluloid::Actor[:processor] = @processor = Processor.pool(:size => config[:num_workers], :args => worker_class)
-    Celluloid::Actor[:batcher]   = @batcher   = BatchProcessor.pool(:size => config[:num_batches])
+    worker_classes.each do |worker_class|
+      managers << Manager.new(worker_class)
+    end
 
-    run!
+    run!(managers)
   rescue Interrupt
     exit 0
   end
@@ -33,7 +31,7 @@ module Sqskiq
   # Subscribes actors to receive system signals
   # Each actor when receives a signal should execute
   # appropriate code to exit cleanly
-  def self.run!
+  def self.run!(managers)
     self_read, self_write = IO.pipe
 
     ['SIGTERM', 'TERM', 'SIGINT'].each do |sig|
@@ -46,47 +44,28 @@ module Sqskiq
       end
     end
 
+
     begin
-      @manager.bootstrap
+
+      managers.each(&:bootstrap)
 
       while readable_io = IO.select([self_read])
+
         signal = readable_io.first[0].gets.strip
 
-        @manager.publish('SIGTERM')
-        @batcher.publish('SIGTERM')
-        @processor.publish('SIGTERM')
+        managers.each(&:prepare_for_shutdown)
 
-        while @manager.running?
+        while managers.all?(&:running?)
           sleep 2
         end
 
-        @manager.terminate
+        managers.each(&:terminate)
 
         break
       end
     end
   end
 
-  ##
-  # checks the provided configuration
-  # and add the defaults when not specified
-  def self.valid_config_from(worker_config)
-    num_workers = (worker_config[:processors].nil? || worker_config[:processors].to_i < 2)? 20 : worker_config[:processors]
-    # messy code due to celluloid pool constraint of 2 as min pool size: see spec for better understanding
-    num_fetchers = num_workers / 10
-    num_fetchers = num_fetchers + 1 if num_workers % 10 > 0
-    num_fetchers = 2 if num_fetchers < 2
-    num_deleters = num_batches = num_fetchers
-
-    {
-      num_workers: num_workers,
-      num_fetchers: num_fetchers,
-      num_batches: num_batches,
-      num_deleters: num_deleters,
-      queue_name: worker_config[:queue_name],
-      empty_queue_throttle: worker_config[:empty_queue_throttle] || 0
-    }
-  end
 
   def self.configure
     yield self
@@ -99,4 +78,22 @@ module Sqskiq
   def self.configuration=(value)
     @configuration = value
   end
+
+  def self.worker_classes
+
+    worker_file_names.inject([]) do |workers, file_name|
+
+      worker_class = file_name.gsub('.rb','').camelize.constantize
+
+      if worker_class.ancestors.include?(Sqskiq::Worker)
+        workers << worker_class
+      end
+      workers
+    end
+  end
+
+  def self.worker_file_names
+    Dir.entries(Rails.root.join('app', 'workers')).select { |file_name| file_name.end_with?('worker.rb') }.reverse
+  end
+
 end

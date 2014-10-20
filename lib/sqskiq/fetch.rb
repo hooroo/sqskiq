@@ -5,14 +5,14 @@ module Sqskiq
     include Celluloid
     include Sqskiq::AWS
 
-    def initialize(queue_name, configuration = {})
+    def initialize(queue_name:, configuration: {}, manager:)
       init_queue(queue_name, configuration)
-      @manager = Celluloid::Actor[:manager]
+      @manager = manager
     end
 
     def fetch
       messages = fetch_sqs_messages
-      @manager.async.fetch_done(messages)
+      @manager.fetch_done(messages)
     end
 
   end

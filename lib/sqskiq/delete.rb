@@ -5,7 +5,7 @@ module Sqskiq
     include Celluloid
     include Sqskiq::AWS
 
-    def initialize(queue_name, configuration = {})
+    def initialize(queue_name:, configuration: {})
       init_queue(queue_name, configuration)
     end
 

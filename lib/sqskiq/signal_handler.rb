@@ -3,7 +3,7 @@ module Sqskiq
     include Celluloid
     include Celluloid::Notifications
 
-    @shutting_down = false
+    # @shutting_down = false
 
     def subscribe_for_shutdown
       subscribe('SIGINT', :shutting_down)
