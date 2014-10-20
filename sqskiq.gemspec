@@ -13,7 +13,7 @@ Gem::Specification.new do |s|
   s.homepage    = 'https://github.com/ricardolazaro/sqskiq'
 
   s.add_dependency "celluloid", "~> 0.16.0"
-  s.add_dependency "aws-sdk", "~> 1.49.0"
+  s.add_dependency "aws-sdk", "~> 1.54.0"
   s.add_dependency "activesupport"
   s.add_dependency "json"
 
